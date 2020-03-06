@@ -1,43 +1,59 @@
 <template>
-<div id="navbar">
+  <div id="navbar">
+    <nav class="uk-navbar-container uk-margin" uk-navbar>
+      <div class="uk-navbar-left">
+        <a
+          class="uk-navbar-item uk-logo"
+          :href="profileLink"
+          target="_blank"
+          style="color: #00cc99;"
+        >{{ username }}</a>
 
-<nav class="uk-navbar-container uk-margin" uk-navbar>
-    <div class="uk-navbar-left">
-
-        <a class="uk-navbar-item uk-logo" :href="profileLink" target="_blank" style="color: #00cc99;">{{ username }}</a>
-
-        <div class="uk-navbar-item uk-navbar-right" style="width: 40%;">
-            <input class="uk-input uk-form-width-small" type="text" placeholder="Recherche..." style="width: 100%;" v-model="searching">
+        <div class="uk-navbar-item" style="margin-left: 2%;">
+          <Player :tracksQ="$parent.tracksQ" />
         </div>
 
-    </div>
-</nav>
-
-</div>
+        <div class="uk-navbar-item uk-navbar-right" style="width: 40%;">
+          <input
+            class="uk-input uk-form-width-small"
+            type="text"
+            placeholder="Recherche..."
+            style="width: 100%;"
+            v-model="searching"
+          />
+        </div>
+      </div>
+    </nav>
+  </div>
 </template>
 
 <script>
+import Player from "@/components/Player.vue";
+
 export default {
-  name: 'Navbar',
-  data () {
+  name: "Navbar",
+  components: {
+    Player
+  },
+  data() {
     return {
-      searching: ''
-    }
+      searching: ""
+    };
   },
   props: {
     username: String,
     profileLink: String
   },
   watch: {
-    searching: function (val) {
-      if (val !== '') {
-        this.$parent.searchItem(val)
+    searching: function(val) {
+      if (val !== "") {
+        this.$parent.searchItem(val);
       } else {
-        this.$parent.research = { }
+        this.$parent.research = {};
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>

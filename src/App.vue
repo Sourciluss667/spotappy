@@ -5,8 +5,6 @@
   </div>
 </template>
 
-<script src="@/js/uikit.min.js"></script>
-<script src="@/js/uikit-icons.min.js"></script>
 <script>
 export default {
   name: "App",
@@ -24,6 +22,10 @@ export default {
     };
   },
   created() {
+    let uiKit = document.createElement('script')
+    uiKit.setAttribute('src', '@/js/uikit.min.js')
+    document.head.appendChild(uiKit)
+
     let urlParam = window.location.href
       .substring(this.redirectUrl.length + 2)
       .split("&");
