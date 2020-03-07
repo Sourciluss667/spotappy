@@ -26,8 +26,10 @@
       <span style="font-style: italic;">{{ actualPlay.artists[0].name }}</span>
     </div>
     <div class="player-item" v-else>Titre - Artiste</div>
-    <div class="player-item">TimeBar</div>
-    <div class="player-item">{{ timer }} / {{ duration }}</div>
+    <div class="player-item">
+      <progress class="uk-progress" :value="timer_ms" :max="duration_ms" style="width: 200%;"></progress>
+    </div>
+    <div class="player-item">{{ showTime(timer_ms) }} / {{ showTime(duration_ms) }}</div>
   </div>
 </template>
 
@@ -37,12 +39,14 @@ export default {
   data() {
     return {
       playing: false,
-      timer: "00:00",
-      duration: "00:00",
+      timer_ms: 0,
+      duration_ms: 0,
       actualPlay: null,
       spotifyPlayer: null,
-      deviceId: '',
-      token: ''
+      deviceId: "",
+      token: "",
+      playerState: null,
+      timer: null
     };
   },
   props: {
@@ -56,18 +60,91 @@ export default {
         return "https://w1.pngwave.com/png/197/883/597/weed-leaf-green-plant-logo-hemp-family-symbol-png-clip-art.png";
       }
     },
+    showTime(time) {
+      //time en ms a mettre en string comme ca : 00:00
+      const min = ~~((time/1000)/60)
+      const sec = ((time % 60000) / 1000).toFixed(0);
+      return `${min}:${sec < 10 ? '0' : ''}${sec}`
+    },
     startTrack() {
-      console.log("start track");
-    
-      fetch(`https://api.spotify.com/v1/me/player/play?device_id=${this.deviceId}`, {
-            method: "PUT",
-            body: JSON.stringify({ uris: [this.actualPlay.uri] }),
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${this.token}`
-            }
-          });
-
+      fetch(
+        `https://api.spotify.com/v1/me/player/play?device_id=${this.deviceId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ uris: [this.actualPlay.uri] }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.token}`
+          }
+        }
+      ).then(res => {
+        if (res.status != 204) {
+          console.log("error start track: ");
+          console.log(res);
+        } else {
+          this.playing = true;
+          this.duration_ms = this.actualPlay.duration_ms;
+        }
+      });
+    },
+    addTrackToQ() {
+      fetch(
+        `https://api.spotify.com/v1/me/player/queue?device_id=${
+          this.deviceId
+        }&uri=${this.tracksQ[this.tracksQ.length - 1].uri}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.token}`
+          }
+        }
+      ).then(res => {
+        if (res.status != 204) {
+          console.log("error add track to Q: ");
+          console.log(res);
+        }
+      });
+    },
+    Resume() {
+      fetch(
+        `https://api.spotify.com/v1/me/player/play?device_id=${this.deviceId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({}),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.token}`
+          }
+        }
+      ).then(res => {
+        if (res.status != 204) {
+          console.log("error resume track: ");
+          console.log(res);
+        } else {
+          this.playing = true;
+        }
+      });
+    },
+    Pause() {
+      fetch(
+        `https://api.spotify.com/v1/me/player/pause?device_id=${this.deviceId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({}),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.token}`
+          }
+        }
+      ).then(res => {
+        if (res.status != 204) {
+          console.log("error pause track: ");
+          console.log(res);
+        } else {
+          this.playing = false;
+        }
+      });
     }
   },
   watch: {
@@ -75,6 +152,30 @@ export default {
       if (this.actualPlay == null) {
         this.actualPlay = this.tracksQ[0];
         this.startTrack();
+      } else {
+        this.addTrackToQ();
+      }
+    },
+    duration_ms: function() {
+        this.timer = setInterval(() => {
+          this.timer_ms += 100
+          if (this.timer_ms >= this.duration_ms) {
+            this.timer_ms = this.duration_ms
+            clearInterval(this.timer)
+          }
+        }, 100);
+    },
+    playing: function() {
+      if (this.playing && this.playerState != null && this.playerState.paused) {
+        // resume
+        this.Resume();
+      } else if (
+        !this.playing &&
+        this.playerState != null &&
+        !this.playerState.paused
+      ) {
+        // pause
+        this.Pause();
       }
     }
   },
@@ -86,7 +187,7 @@ export default {
     console.log("start player");
     window.onSpotifyWebPlaybackSDKReady = () => {
       const token = this.$parent.$parent.tokens.get("access_token");
-      this.token = token
+      this.token = token;
 
       this.spotifyPlayer = new Spotify.Player({
         name: "Spotappy",
@@ -112,13 +213,13 @@ export default {
 
       // Playback status updates
       this.spotifyPlayer.addListener("player_state_changed", state => {
-        console.log(state);
+        this.playerState = state;
       });
 
       // Ready
       this.spotifyPlayer.addListener("ready", ({ device_id }) => {
-        this.deviceId = device_id
-        console.log("Ready with Device ID", device_id);
+        this.deviceId = device_id;
+        // console.log("Ready with Device ID", device_id);
       });
 
       // Not Ready
